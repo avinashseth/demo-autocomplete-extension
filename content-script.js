@@ -1,158 +1,144 @@
 (function() {
-    // List of domain suggestions
-    const DOMAIN_SUGGESTIONS = ["gmail.com", "hotmail.com", "yahoo.com", "outlook.com"];
-  
-    // Create a dropdown container for suggestions
-    const suggestionBox = document.createElement("div");
-    suggestionBox.id = "email-autocomplete-suggestions";
-    suggestionBox.style.display = "none";
-    document.body.appendChild(suggestionBox);
-  
-    // Track which input currently has focus
-    let activeInput = null;
-  
-    /**
-     * Position the suggestionBox below the active email input
-     */
-    function positionSuggestionBox() {
-      if (!activeInput) return;
-  
-      const rect = activeInput.getBoundingClientRect();
-      suggestionBox.style.position = "absolute";
-      suggestionBox.style.top = window.scrollY + rect.bottom + "px";
-      suggestionBox.style.left = window.scrollX + rect.left + "px";
-      suggestionBox.style.width = rect.width + "px";
+  /**
+   * Mock function to simulate an API call returning a suggestion
+   * for the user's partial input.
+   *
+   * Replace this with your real endpoint, e.g.:
+   *   const response = await fetch('https://your-api.com/autocomplete?text=' + userText);
+   *   const data = await response.json();
+   *   return data.suggestion || "";
+   */
+  async function fetchSuggestion(userText) {
+    if (!userText || userText.length < 3) {
+      return "";
     }
-  
-    /**
-     * Show relevant suggestions in the dropdown
-     */
-    function showSuggestions(filteredSuggestions) {
-      // Clear current suggestions
-      suggestionBox.innerHTML = "";
-  
-      // Hide if no suggestions
-      if (filteredSuggestions.length === 0) {
-        suggestionBox.style.display = "none";
-        return;
+    const lower = userText.toLowerCase();
+
+    // Some silly static examples:
+    if (lower.startsWith("hel")) {
+      return "Hello there, how can I help you today?";
+    } else if (lower.startsWith("thi")) {
+      return "This is a sample sentence completion.";
+    } else if (lower.startsWith("goo")) {
+      return "Good morning! Hope you have a great day.";
+    }
+
+    return "";
+  }
+
+  /**
+   * Applies the suggestion if it starts with what the user has typed.
+   * We set the input's value to the full suggestion, then
+   * programmatically select the remainder (the "uncommitted" portion).
+   */
+  async function applySuggestion(input) {
+    const userText = input.dataset.userTyped || ""; // Our stored typed text
+    const suggestion = await fetchSuggestion(userText);
+
+    if (
+      !suggestion ||
+      !userText ||
+      !suggestion.toLowerCase().startsWith(userText.toLowerCase()) ||
+      suggestion.length <= userText.length
+    ) {
+      return; // No valid suggestion
+    }
+
+    // Full suggestion, highlight everything after userText.length
+    input.value = suggestion;
+    // Programmatically highlight (select) the extra portion
+    input.setSelectionRange(userText.length, suggestion.length);
+  }
+
+  /**
+   * Handles user input changes:
+   * - If new input overwrites the selected suggestion portion, we track that in data-user-typed.
+   * - If user is just typing further, also track that.
+   */
+  function onInputChange(e) {
+    const input = e.target;
+    // If the user typed something while a portion was selected, it overwrites the suggestion.
+    // Let's figure out what portion is newly typed.
+
+    // We need to check the selection range. If there's a selection, it might be overwriting.
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+
+    // If the user typed or deleted while text was selected
+    if (start !== end) {
+      // The user replaced the suggestion portion with something else
+      // So let's set user-typed to whatever the current input value is
+      input.dataset.userTyped = input.value;
+    } else {
+      // If there's no selection, it means user either typed at the end or in the middle
+      // But let's keep it simple and assume typed at the end
+      input.dataset.userTyped = input.value;
+    }
+
+    // Attempt to fetch/apply a new suggestion
+    applySuggestion(input);
+  }
+
+  /**
+   * Keydown handler to accept or reject suggestion.
+   * - Tab or Right Arrow => accept
+   * - Other keys that change text => reject or overwrite
+   */
+  function onKeyDown(e) {
+    const input = e.target;
+    // We'll only do something special if there's a highlighted portion
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+
+    // If there's a portion highlighted (the suggestion part)
+    if (start < end && end === input.value.length) {
+      // The user is highlighting the tail end of the text,
+      // which is presumably the suggestion
+      // If they press Tab or Right Arrow => accept suggestion
+      if (e.key === "Tab" || e.key === "ArrowRight") {
+        e.preventDefault();
+        // Accept suggestion => place cursor at end, no selection
+        input.setSelectionRange(input.value.length, input.value.length);
+        // Clear the "userTyped" data since we've accepted the suggestion
+        input.dataset.userTyped = input.value;
       }
-  
-      // Populate the suggestion dropdown
-      filteredSuggestions.forEach(suggestion => {
-        const item = document.createElement("div");
-        item.className = "suggestion-item";
-        item.textContent = suggestion;
-  
-        // When user clicks on a suggestion, complete the input
-        item.addEventListener("mousedown", (e) => {
-          e.preventDefault();
-          completeDomain(suggestion);
-        });
-  
-        suggestionBox.appendChild(item);
-      });
-  
-      // Make the suggestion box visible
-      suggestionBox.style.display = "block";
     }
-  
-    /**
-     * Complete the email input with the selected domain suggestion
-     */
-    function completeDomain(domain) {
-      if (!activeInput) return;
-  
-      const value = activeInput.value;
-      const atIndex = value.indexOf("@");
-      if (atIndex !== -1) {
-        // everything before '@' + '@' + domain
-        activeInput.value = value.substring(0, atIndex + 1) + domain;
-      }
-      hideSuggestionBox();
-    }
-  
-    /**
-     * Hide the suggestion box
-     */
-    function hideSuggestionBox() {
-      suggestionBox.innerHTML = "";
-      suggestionBox.style.display = "none";
-    }
-  
-    /**
-     * Filter domain suggestions based on the text typed after '@'
-     */
-    function getFilteredSuggestions(inputValue) {
-      const atIndex = inputValue.indexOf("@");
-      if (atIndex === -1) {
-        return []; // user hasn't typed '@' yet
-      }
-      const typedDomain = inputValue.substring(atIndex + 1).toLowerCase();
-      if (!typedDomain) {
-        // user just typed '@' but no domain yet, show all
-        return DOMAIN_SUGGESTIONS;
-      }
-      return DOMAIN_SUGGESTIONS.filter(domain => domain.startsWith(typedDomain));
-    }
-  
-    /**
-     * Add event listeners to input elements of type="email"
-     */
-    function addListenersToEmailInputs(inputs) {
-      inputs.forEach((input) => {
-        // Focus event
-        input.addEventListener("focus", () => {
-          activeInput = input;
-          positionSuggestionBox();
-        });
-  
-        // Blur event
-        input.addEventListener("blur", () => {
-          // Delay hiding to allow click on suggestion
-          setTimeout(() => {
-            activeInput = null;
-            hideSuggestionBox();
-          }, 200);
-        });
-  
-        // Keydown event to capture Tab for auto-completion
-        input.addEventListener("keydown", (e) => {
-          if (e.key === "Tab" && suggestionBox.style.display === "block") {
-            // If suggestions are visible, pick the first one
-            const firstSuggestion = suggestionBox.querySelector(".suggestion-item");
-            if (firstSuggestion) {
-              e.preventDefault();
-              completeDomain(firstSuggestion.textContent);
-            }
-          }
-        });
-  
-        // Input event (fires on every keystroke)
-        input.addEventListener("input", () => {
-          activeInput = input;
-          positionSuggestionBox();
-  
-          const filtered = getFilteredSuggestions(input.value);
-          showSuggestions(filtered);
-        });
-      });
-    }
-  
-    /**
-     * Observe DOM for dynamically added email inputs
-     */
-    const observer = new MutationObserver(() => {
-      const emailInputs = document.querySelectorAll('input[type="email"]');
-      addListenersToEmailInputs([...emailInputs]);
-    });
-  
-    // Start observing the entire document
-    observer.observe(document.body, { childList: true, subtree: true });
-  
-    // Also initialize listeners for any existing email inputs on load
-    window.addEventListener("DOMContentLoaded", () => {
-      const emailInputs = document.querySelectorAll('input[type="email"]');
-      addListenersToEmailInputs([...emailInputs]);
-    });
-  })();
-  
+    // If the user typed anything else, it might be typed at the highlight, thus overwriting
+    // We'll handle that in the `input` event, so we don't do anything else here.
+  }
+
+  /**
+   * Attaches the event listeners to a single input.
+   */
+  function attachAutoCompleter(input) {
+    // Mark as processed
+    if (input.classList.contains("inline-completer-attached")) return;
+    input.classList.add("inline-completer-attached");
+
+    // We'll store the user's typed portion in a data attribute
+    input.dataset.userTyped = "";
+
+    // onInput => track typed text & apply new suggestion
+    input.addEventListener("input", onInputChange);
+    // onKeyDown => handle acceptance via Tab/ArrowRight
+    input.addEventListener("keydown", onKeyDown);
+  }
+
+  // -------------------------------------------------------------
+  // Observe the DOM for text inputs we want to enhance
+  // -------------------------------------------------------------
+  const observer = new MutationObserver(() => {
+    // Example: let's target an input with name="sentence"
+    // Adjust selector as you like (e.g., any <input type="text">).
+    const textInputs = document.querySelectorAll('input[type="text"][name="sentence"]');
+    textInputs.forEach(attachAutoCompleter);
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  // Also handle any existing elements on initial load
+  window.addEventListener("DOMContentLoaded", () => {
+    const textInputs = document.querySelectorAll('input[type="text"][name="sentence"]');
+    textInputs.forEach(attachAutoCompleter);
+  });
+})();

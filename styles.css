@@ -1,21 +1,41 @@
-#email-autocomplete-suggestions {
-    border: 1px solid #ccc;
-    background: #fff;
-    position: absolute;
-    z-index: 9999;
-    font-family: Arial, sans-serif;
-    font-size: 14px;
-    max-height: 150px;
-    overflow-y: auto;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  }
-  
-  .suggestion-item {
-    padding: 8px;
-    cursor: pointer;
-  }
-  
-  .suggestion-item:hover {
-    background-color: #f0f0f0;
-  }
-  
+.gmail-completion-wrapper {
+  position: relative;
+  display: inline-block; /* or block, depending on your layout */
+  width: fit-content;
+}
+
+/* The actual input field should be on top, but we rely on the overlay for ghost text */
+.gmail-completion-wrapper > input.gmail-like-autocomplete {
+  background: transparent; 
+  position: relative;
+  /* If your input is wide, you might set a fixed width. Example:
+     width: 300px; 
+     or let it auto-size if your layout allows it. */
+}
+
+.gmail-completion-overlay1 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none; /* user can click through */
+  color: grey;
+  white-space: pre;     /* preserve spacing exactly */
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  /* Also replicate your input's padding / margin if needed. */
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* The portion the user has typed is invisible in the overlay,
+   so the typed text from the input shows through. */
+.gmail-completion-overlay .typed-portion {
+  color: transparent;
+}
+
+/* The remainder of the suggestion is grey. */
+.gmail-completion-overlay .suggested-portion {
+  color: rgba(128,128,128,0.8);
+}
