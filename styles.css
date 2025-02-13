@@ -1,0 +1,21 @@
+#email-autocomplete-suggestions {
+    border: 1px solid #ccc;
+    background: #fff;
+    position: absolute;
+    z-index: 9999;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    max-height: 150px;
+    overflow-y: auto;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
+  
+  .suggestion-item {
+    padding: 8px;
+    cursor: pointer;
+  }
+  
+  .suggestion-item:hover {
+    background-color: #f0f0f0;
+  }
+  
